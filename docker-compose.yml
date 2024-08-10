@@ -2,21 +2,21 @@ version: '3'
 
 services:
   zookeeper:
-      image: confluentinc/cp-zookeeper:7.4.0
-      hostname: zookeeper
-      container_name: zookeeper
-      ports:
-        - "2181:2181"
-      environment:
-        ZOOKEEPER_CLIENT_PORT: 2181
-        ZOOKEEPER_TICK_TIME: 2000
-      healthcheck:
-        test: ['CMD', 'bash', '-c', "echo 'ruok' | nc localhost 2181"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-      networks:
-        - confluent
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ['CMD', 'bash', '-c', "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - confluent
 
   broker:
     image: confluentinc/cp-server:7.4.0
@@ -75,6 +75,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
   control-center:
     image: confluentinc/cp-enterprise-control-center:7.4.0
     hostname: control-center
@@ -102,8 +103,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
   airflow-db:
     image: postgres:13
+    container_name: airflow-db
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -112,6 +115,12 @@ services:
       - airflow-db-volume:/var/lib/postgresql/data
     networks:
       - confluent
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
 
   airflow-webserver:
     image: apache/airflow:2.6.3
