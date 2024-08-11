@@ -104,7 +104,7 @@ services:
       timeout: 10s
       retries: 5
 
-  airflow-webserver:
+  webserver:
     image: apache/airflow:2.6.0-python3.9
     command: webserver
     entrypoint: ['/opt/airflow/script/entrypoint.sh']
@@ -128,9 +128,9 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ['CMD-SHELL', "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      test: ['CMD-SHELL', "[ -f /opt/airflow/webserver.pid ]"]
       interval: 30s
-      timeout: 30s
+      timeout: 60s
       retries: 3
     networks:
       - confluent
@@ -139,7 +139,7 @@ services:
     image: apache/airflow:2.6.0-python3.9
     container_name: airflow-scheduler
     depends_on:
-      airflow-webserver:
+      webserver:
         condition: service_healthy
     environment:
       - LOAD_EX=n

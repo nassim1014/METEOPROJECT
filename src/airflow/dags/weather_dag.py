@@ -6,7 +6,8 @@ import os
 import sys
 
 # Add the parent directory to the sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append('/opt/airflow')
 from producers.weather_producer import produce_weather_data
 from consumers.weather_consumer import consume_weather_data
 
