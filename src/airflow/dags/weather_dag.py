@@ -1,12 +1,12 @@
+
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
 import os
 import sys
 
-# Adjust the path to include the src directory
-sys.path.insert(0, '/opt/airflow')
-
+# Add the parent directory to the sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from producers.weather_producer import produce_weather_data
 from consumers.weather_consumer import consume_weather_data
 

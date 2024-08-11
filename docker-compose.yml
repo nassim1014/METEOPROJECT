@@ -104,65 +104,80 @@ services:
       timeout: 10s
       retries: 5
 
-  airflow-db:
-    image: postgres:13
-    container_name: airflow-db
-    environment:
-      POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
-      POSTGRES_DB: airflow
-    volumes:
-      - airflow-db-volume:/var/lib/postgresql/data
-    networks:
-      - confluent
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
-
-
   airflow-webserver:
-    image: apache/airflow:2.6.3
-    container_name: airflow-webserver
+    image: apache/airflow:2.6.0-python3.9
+    command: webserver
+    entrypoint: ['/opt/airflow/script/entrypoint.sh']
     depends_on:
-      airflow-db:
-        condition: service_healthy
+      - postgres
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'true'
+      - LOAD_EX=n
+      - EXECUTOR=Sequential
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
+      - ./src/airflow/dags:/opt/airflow/dags
+      - ./src/producers:/opt/airflow/producers  # Mount the producers directory
+      - ./src/consumers:/opt/airflow/consumers  # Mount the consumers directory
+      - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
+      - ./requirements.txt:/opt/airflow/requirements.txt
     ports:
       - "8080:8080"
-    command: webserver
+    healthcheck:
+      test: ['CMD-SHELL', "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
     networks:
       - confluent
 
   airflow-scheduler:
-    image: apache/airflow:2.6.3
+    image: apache/airflow:2.6.0-python3.9
     container_name: airflow-scheduler
     depends_on:
-      airflow-db:
+      airflow-webserver:
         condition: service_healthy
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      - LOAD_EX=n
+      - EXECUTOR=Sequential
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-    command: scheduler
+      - ./src/airflow/dags:/opt/airflow/dags
+      - ./src/producers:/opt/airflow/producers  # Mount the producers directory
+      - ./src/consumers:/opt/airflow/consumers  # Mount the consumers directory
+      - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
+      - ./requirements.txt:/opt/airflow/requirements.txt
+    command: bash -c "pip install -r ./requirements.txt && airflow db upgrade && airflow scheduler"
     networks:
       - confluent
 
-volumes:
-  airflow-db-volume:
+#volumes:
+#  postgres-volume:
+  postgres:
+    image: postgres:14.0
+    container_name: postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+#    volumes:
+#      - postgres-volume:/var/lib/postgresql/data
+    networks:
+      - confluent
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 10
 
 networks:
   confluent:
