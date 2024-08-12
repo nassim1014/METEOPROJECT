@@ -19,4 +19,4 @@ fi
 
 $(command -v airflow) db upgrade
 
-exec airflow airflow-webserver
+exec airflow webserver
